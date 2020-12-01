@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<head>
+	<meta charset="utf-8">
+	<title>VCRExt Manual</title>
+	<style>
+	body { background-color: #e8e8ff; font-family: sans-serif;}
+	</style>
+</head>
+<body>
+<h1>VCRExt Manual</h1>
+The VCREXT extension provides the following commands to Tcl/Tk:
+<ul>
+	<a href="#close">close</a><br>
+	<a href="#execsuspended">execsuspended</a><br>
+	<a href="#help">help</a><br>
+	<a href="#kill">kill</a><br>
+	<a href="#regservice">regservice</a><br>
+	<a href="#resume">resume</a><br>
+	<a href="#serve">serve</a><br>
+	<a href="#terminate">terminate</a><br>
+	<a href="#unregservice">unregservice</a><br>
+	<a href="#validpid">validpid</a><br>
+	<a href="#version">version</a><br>
+	<a href="#wait">wait</a><br>
+</ul>
+<h2 id="close">Command close</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::close</b> <i>handle</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      This command closes handles previously returned by command execsuspended.
+      <i>handle</i> must be either one of the values returned by execsuspended or a
+      list of values returned by execsuspended.<br>
+      Keep in mind: Not to close any handle returned by execsuspended prevents
+      the corresponding system resource from being freed. However, closing any
+      handle twice can have unpredictable effects, from getting a system error
+      code to an application crash.<p>
+      Close returns the number of handles it could close. This should be the
+      number of handles specified by <i>handle</i>.
+ 	</ul>
+  </ul>
+<h2 id="execsuspended">Command execsuspended</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::execsuspended</b> <i>command</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      Creates a new process which starts in suspended state. <i>command</i>
+      specifies the command line to be executed in the native syntax, e.g
+      with \ as file separator.
+	<p>
+      Returns a list containing the process handle and the handle of the
+      thread in case of success. Otherwise the Windows error code.
+	</ul>
+  </ul>
+<h2 id="help">Command help</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::help</b> [<i>name</i>]
+	</ul>
+    <h3>Description:</h3><ul>
+      If no <i>name</i> parameter has been specified, this command returns
+      help texts for all commands provided by this extension.<br> If <i>name</i>
+      has been specified, the help text for the specified command will
+      be returned.
+	</ul>
+  </ul>
+<h2 id="kill">Command kill</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::kill</b> <i>id</i> <i>level</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      Kills the process specified by <i>id</i>. <i>id</i> must be either a process ID
+      or the name of a executable file, e.g. tclsh.exe.<br>
+      <i>level</i> specifies how kill works. Allowed values for <i>level</i> are 0, 1
+      and 2. Depending on <i>level</i>, kill works as follows:
+	  <ul>
+        <li/><i>level</i> = 0: Only the specified process will be killed.
+        <li/><i>level</i> = 1: The specified process and all child processes will be
+                     killed.
+        <li/><i>level</i> = 2: The specified process and all child processes will be
+                     killed recursively.
+	  </ul>
+	<p>
+      Returns the number of processes that have been killed.
+	</ul>
+  </ul>
+<h2 id="regservice">Command regservice</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::regservice</b> <i>name</i> <i>description</i> <i>command</i> <i>starttype</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      Registers a service with name <i>name</i> and a describing text specified
+      by <i>description</i>. The command that invokes the service will be passed
+      as 3rd parameter <i>command</i>. <i>starttype</i> must be a value between 2 and
+      4 and specifies the so-called service start option:
+	  <ul>
+	    <li/>2: Auto-start service, will be started by the service control
+           manages at system startup.
+	    <li/>        3: On-demand service, will be started by the service control
+           manager when a process invokes the StartService function.
+	    <li/>4: Disabled service, will not be started.
+	  </ul>
+	<p>
+      Returns 0 on success and the Windows error code otherwise.
+	</ul>
+  </ul>
+<h2 id="resume">Command resume</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::resume</b> <i>handle</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      Resumes a suspended process. <i>handle</i> must be a thread handle
+      returned by an execsuspended command.
+	<p>
+      Returns the suspend count returned by the WIN32 function ResumeThread
+      or the WIN32 error code in error case.
+	</ul>
+  </ul>
+<h2 id="serve">Command serve</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::serve</b> <i>name</i> <i>bitmask</i> <i>command</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      Starts the service control dispatcher in a new thread. <i>name</i>
+      specifies the name of the service as specified in regservice.<br>
+      <i>bitmask</i> specifies the control codes the service accepts (logical
+      OR combination of one or more of the following values:
+	  <ul>
+        <li/>0x1:   Service can be stopped,
+        <li/>0x2:   Service can be paused or continued,
+        <li/>0x4:   Service handles shutdown notifications,
+        <li/>0x100: Service handles prioritized shutdown notifications)
+	  </ul>
+      <i>command</i> is the command to be executed by the service control
+      dispatcher whenever a supported action shall be performed. The
+      control code will be appended, therefore it is recommended to specify
+      the name of a tcl procedure that acceps one integer parameter, the
+      control code.<br> The control code can have one of the following values:
+	  <ul>
+        <li/>0x1:  The service shall stop,
+        <li/>0x2:  The sercice shall be paused,
+        <li/>0x3:  The service shall be continued,
+        <li/>0x5:  The service shall stop due to system shutdown,
+        <li/>0xF:  The service shall stop due to system shutdown (prioritized).
+	  </ul>
+	<p>
+      Returns 0 on success, 1 if service is running, 2 if not enough memory
+      is available or any WIN32 error code.
+	</ul>
+  </ul>
+<h2 id="terminate">Command terminate</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::terminate</b> <i>handle</i> <i>exitcode</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      Terminates the process specified by <i>handle</i>. <i>handle</i> must be a
+      process handle returned by an execsuspended command. <i>exitcode</i> is
+      the exit code of the process to be terminated.
+	<p>
+      Returns 0 on success and a WIN32 error code otherwise.
+	</ul>
+  </ul>
+<h2 id="unregservice">Command unregservice</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::unregservice</b> <i>name</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      Unregister a service. <i>name</i> specifies the service name as specified
+      in the Windows registry. The name specified in a previous regservice
+      command is an example for such a name.
+	<p>
+      Returns 0 on success and a WIN32 error code otherwise.
+	</ul>
+  </ul>
+<h2 id="validpid">Command validpid</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::validpid</b> <i>pid</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      Checks whether <i>pid</i> can be used as process ID.
+	<p>
+      Returns 1 if <i>pid</i> can be used as process ID, 0 otherwise.
+	</ul>
+  </ul>
+<h2 id="version">Command version</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::version</b>
+	</ul>
+    <h3>Description:</h3><ul>
+      This command returns the version of the extension as a string.
+	</ul>
+  </ul>
+<h2 id="wait">Command wait</h2>
+  <ul>
+    <h3>Syntax:</h3><ul>
+	  <b>VCRExt::wait</b> <i>handle</i>
+	</ul>
+    <h3>Description:</h3><ul>
+      This command waits until one of the threads or processes specified by
+      <i>handle</i> has been terminated. <i>handle</i> is either one of the values
+      returned by a previously called execsuspended command or a list of
+      max. 64 values returned by several execsuspended commands.
+	<p>
+      Returns the index of the first handle of a thread or process that has
+      been terminated. In error case, the WIN32 error code will be returned
+      with negative sign.
+	</ul>
+  </ul>
+</body>

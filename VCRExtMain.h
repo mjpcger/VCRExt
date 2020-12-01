@@ -178,6 +178,7 @@
 		operator const char*() const;
 		String operator+(const String& arg);
 		String& operator=(const String& val);
+		String& operator+=(const String& arg);
 	};
 
 	/*

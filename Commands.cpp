@@ -29,7 +29,7 @@
 DECLARE(version,0,"") {
 	RES(String, ret);
 
-	ret = "1.3";
+	ret = "1.1";
 }
 FINISH
 /*
@@ -52,6 +52,9 @@ DECLARE(kill, 2, "id level") {
 	Int id(0);
 	String name("");
 	int count = 0;
+	if (level < 0 || level > 2)
+		throw ValueException(ValueException::ValueExceptionLimit, "Value out of range (0 - 2)");
+
 	HANDLE hd = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
 	if (hd != INVALID_HANDLE_VALUE) {
@@ -149,6 +152,9 @@ DECLARE(regservice, 4, "name description command starttype") {
 	ARG(Int, type, 4);
 	RES(Int, res);
 	SC_HANDLE hd, hds;
+
+	if (type < 2 || type > 4)
+		throw ValueException(ValueException::ValueExceptionLimit, "Value out of range (2 - 4");
 
 	if((hd = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS)) == NULL)
 		res = GetLastError();
@@ -295,6 +301,8 @@ DECLARE(serve, 3, "name bitmask command") {
 	ARG(String, cmd, 3);
 	RES(Int, res);
 
+	if (mask & ~(SERVICE_ACCEPT_STOP|SERVICE_ACCEPT_PAUSE_CONTINUE|SERVICE_ACCEPT_SHUTDOWN|SERVICE_ACCEPT_PRESHUTDOWN))
+		throw ValueException(ValueException::ValueExceptionLimit, "Invalid bit mask value");
 	res = 1;
 	if (sd.entry.lpServiceName == NULL) {
 		sd.command = new String(cmd + " ");
@@ -479,6 +487,218 @@ DECLARE(close, 1, "handle") {
 	}
 }
 FINISH
+/*
+Command help
+Syntax:
+help
+Returns value:
+String containing help for all commands provided by VCRExt.
+*/
+DECLARE(help, -1, "") {
+	RES(String, ret);
+	String cmd("");
+	bool found = false;
+	if (cnt == 1) {
+		ret = "The VCREXT extension provides the following commands:\n";
+	}
+	else if (cnt == 2) {
+		cmd = String(objs[1]);
+		ret = "";
+	}
+	while (!found) {
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "close") == 0) {
+			ret += "  Command close\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::close <handle>\n";
+			ret += "    Description:\n";
+			ret += "      This command closes handles previously returned by command execsuspended.\n";
+			ret += "      <handle> must be either one of the values returned by execsuspended or a\n";
+			ret += "      list of values returned by execsuspended.\n";
+			ret += "      Keep in mind: Not to close any handle returned by execsuspended prevents\n";
+			ret += "      the corresponding system resource from being freed. However, closing any\n";
+			ret += "      handle twice can have unpredictable effects, from getting a system error\n";
+			ret += "      code to an application crash.\n";
+			ret += "      \n";
+			ret += "      Close returns the number of handles it could close. This should be the\n";
+			ret += "      number of handles specified by <handle>.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "execsuspended") == 0) {
+			ret += "  Command execsuspended\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::execsuspended <command>\n";
+			ret += "    Description:\n";
+			ret += "      Creates a new process which starts in suspended state. <command>\n";
+			ret += "      specifies the command line to be executed in the native syntax, e.g\n";
+			ret += "      with \\ as file separator.\n";
+			ret += "      \n";
+			ret += "      Returns a list containing the process handle and the handle of the\n";
+			ret += "      thread in case of success. Otherwise the Windows error code.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "help") == 0) {
+			ret += "  Command help\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::help [<name>]\n";
+			ret += "    Description:\n";
+			ret += "      If no <name> parameter has been specified, this command returns\n";
+			ret += "      help texts for all commands provided by this extension. If <name>\n";
+			ret += "      has been specified, the help text for the specified command will\n";
+			ret += "      be returned.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "kill") == 0) {
+			ret += "  Command kill\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::kill <id> <level>\n";
+			ret += "    Description:\n";
+			ret += "      Kills the process specified by <id>. <id> must be either a process ID\n";
+			ret += "      or the name of a executable file, e.g. tclsh.exe.\n";
+			ret += "      <level> specifies how kill works. Allowed values for <level> are 0, 1\n";
+			ret += "      and 2. Depending on <level>, kill works as follows:\n";
+			ret += "        <level> = 0: Only the specified process will be killed.\n";
+			ret += "        <level> = 1: The specified process and all child processes will be\n";
+			ret += "                     killed.\n";
+			ret += "        <level> = 2: The specified process and all child processes will be\n";
+			ret += "                     killed recursively.\n";
+			ret += "      \n";
+			ret += "      Returns the number of processes that have been killed.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "regservice") == 0) {
+			ret += "  Command regservice\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::regservice <name> <description> <command> <starttype>\n";
+			ret += "    Description:\n";
+			ret += "      Registers a service with name <name> and a describing text specified\n";
+			ret += "      by <description>. The command that invokes the service will be passed\n";
+			ret += "      as 3rd parameter <command>. <starttype> must be a value between 2 and\n";
+			ret += "      4 and specifies the so-called service start option:\n";
+			ret += "        2: Auto-start service, will be started by the service control\n";
+			ret += "           manages at system startup.\n";
+			ret += "        3: On-demand service, will be started by the service control\n";
+			ret += "           manager when a process invokes the StartService function.\n";
+			ret += "        4: Disabled service, will not be started.\n";
+			ret += "      \n";
+			ret += "      Returns 0 on success and the Windows error code otherwise.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "resume") == 0) {
+			ret += "  Command resume\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::resume <handle>\n";
+			ret += "    Description:\n";
+			ret += "      Resumes a suspended process. <handle> must be a thread handle\n";
+			ret += "      returned by an execsuspended command.\n";
+			ret += "      \n";
+			ret += "      Returns the suspend count returned by the WIN32 function ResumeThread\n";
+			ret += "      or the WIN32 error code in error case.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "serve") == 0) {
+			ret += "  Command serve\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::serve <name> <bitmask> <command>\n";
+			ret += "    Description:\n";
+			ret += "      Starts the service control dispatcher in a new thread. <name>\n";
+			ret += "      specifies the name of the service as specified in regservice,\n";
+			ret += "      <bitmask> specifies the control codes the service accepts (logical\n";
+			ret += "      OR combination of one or more of the following values:\n";
+			ret += "        0x1:   Service can be stopped,\n";
+			ret += "        0x2:   Service can be paused or continued,\n";
+			ret += "        0x4:   Service handles shutdown notifications,\n";
+			ret += "        0x100: Service handles prioritized shutdown notifications)\n";
+			ret += "      and <command> is the command to be executed by the service control\n";
+			ret += "      dispatcher whenever a supported action shall be performed. The\n";
+			ret += "      control code will be appended, therefore it is recommended to specify\n";
+			ret += "      the name of a tcl procedure that acceps one integer parameter, the\n";
+			ret += "      control code. The control code can have one of the following values:\n";
+			ret += "        0x1:  The service shall stop,\n";
+			ret += "        0x2:  The sercice shall be paused,\n";
+			ret += "        0x3:  The service shall be continued,\n";
+			ret += "        0x5:  The service shall stop due to system shutdown,\n";
+			ret += "        0xF:  The service shall stop due to system shutdown (prioritized).\n";
+			ret += "      \n";
+			ret += "      Returns 0 on success, 1 if service is running, 2 if not enough memory\n";
+			ret += "      is available or any WIN32 error code.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "terminate") == 0) {
+			ret += "  Command terminate\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::terminate <handle> <exitcode>\n";
+			ret += "    Description:\n";
+			ret += "      Terminates the process specified by <handle>. <handle> must be a\n";
+			ret += "      process handle returned by an execsuspended command. <exitcode> is\n";
+			ret += "      the exit code of the process to be terminated.\n";
+			ret += "      \n";
+			ret += "      Returns 0 on success and a WIN32 error code otherwise.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "unregservice") == 0) {
+			ret += "  Command unregservice\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::unregservice <name>\n";
+			ret += "    Description:\n";
+			ret += "      Unregister a service. <name> specifies the service name as specified\n";
+			ret += "      in the Windows registry. The name specified in a previous regservice\n";
+			ret += "      command is an example for such a name.\n";
+			ret += "      \n";
+			ret += "      Returns 0 on success and a WIN32 error code otherwise.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "validpid") == 0) {
+			ret += "  Command validpid\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::validpid <pid>\n";
+			ret += "    Description:\n";
+			ret += "      Checks whether <pid> can be used as process ID.\n";
+			ret += "      \n";
+			ret += "      Returns 1 if <pid> can be used as process ID, 0 otherwise.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "version") == 0) {
+			ret += "  Command version\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::version\n";
+			ret += "    Description:\n";
+			ret += "      This command returns the version of the extension as a string.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (((const char*)cmd)[0] == 0 || strcmp(cmd, "wait") == 0) {
+			ret += "  Command wait\n";
+			ret += "    Syntax:\n";
+			ret += "      VCRExt::wait <handle>\n";
+			ret += "    Description:\n";
+			ret += "      This command waits until one of the threads or processes specified by\n";
+			ret += "      <handle> has been terminated. <handle> is either one of the values\n";
+			ret += "      returned by a previously called execsuspended command or a list of\n";
+			ret += "      max. 64 values returned by several execsuspended commands.\n";
+			ret += "      \n";
+			ret += "      Returns the index of the first handle of a thread or process that has\n";
+			ret += "      been terminated. In error case, the WIN32 error code will be returned\n";
+			ret += "      with negative sign.\n";
+			ret += "\n";
+			found = true;
+		}
+		if (!found) {
+			ret = String("Command ") + cmd + " not supported.\nThe VCREXT extension provides the following commands:\n";
+			cmd = "";
+		}
+	}
+}
+FINISH
 static NewCmdDesc versionDesc("::VCRExt::version", version, NULL, NULL);
 static NewCmdDesc killDesc("::VCRExt::kill", kill, NULL, NULL);
 static NewCmdDesc validpidDesc("::VCRExt::validpid", validpid, NULL, NULL);
@@ -490,3 +710,4 @@ static NewCmdDesc resumeDesc("::VCRExt::resume", resume, NULL, NULL);
 static NewCmdDesc terminateDesc("::VCRExt::terminate", terminate, NULL, NULL);
 static NewCmdDesc waitDesc("::VCRExt::wait", wait, NULL, NULL);
 static NewCmdDesc closeDesc("::VCRExt::close", close, NULL, NULL);
+static NewCmdDesc helpDesc("::VCRExt::help", help, NULL, NULL);

@@ -17,11 +17,13 @@
 #define DEFINEGLOBALS
 #include "VCRExtMain.h"
 /***************************
- * Change value of EXTENTRY to the resulting dll name + _Init,
+ * Change value of EXTENTRY to the resulting dll name + _Init
+ * and value of EXTEXIT to the resulting dll name + _Unload,
  * all lowercase characters, except the first character,
- * e.g. for MyExt.dll to Myext_Init.
+ * e.g. for MyExt.dll to Myext_Init and Myext_Unload.
  **************************/
 #define EXTENTRY Vcrext_Init
+#define EXTEXIT  Vcrext_Unload
 /**
  * Initialization of tcl stubs, dummy if not compiled for stubs support
  */
@@ -74,6 +76,12 @@ extern "C" DLLEXPORT int EXTENTRY(Tcl_Interp *pi) {
 		return TCL_ERROR;
 	for (act = NewCmdDesc::Head; act; act = act->Next)
 		Tcl_CreateObjCommand(pi, act->Name, act->Entry, act->Data, act->Cleanup);
+	return TCL_OK;
+}
+
+extern "C" DLLEXPORT int EXTEXIT(Tcl_Interp *pi, int flags) {
+	for (NewCmdDesc *act = NewCmdDesc::Head; act; act = act->Next)
+		Tcl_DeleteCommand(pi, act->Name);
 	return TCL_OK;
 }
 
@@ -319,6 +327,10 @@ String String::operator+(const String& arg) {
 }
 String& String::operator=(const String& val) {
 	Tcl_SetStringObj(V, Tcl_GetString(val.V), -1);
+	return *this;
+}
+String& String::operator+=(const String& val) {
+	Tcl_AppendObjToObj(V, val.V);
 	return *this;
 }
 
