@@ -1,0 +1,7 @@
+
+*.sln
+.vs
+x64
+*.user
+Debug
+Release
